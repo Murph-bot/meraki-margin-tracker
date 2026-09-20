@@ -4,7 +4,7 @@
 [phases.install]
   cmds = [
     "python -m pip install -r backend/requirements.txt",
-    "cd frontend && npm ci"
+    "cd frontend && npm install"
   ]
 
 [phases.build]
