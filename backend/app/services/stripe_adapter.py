@@ -1,0 +1,102 @@
+from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass
+from app.timeutil import ATHENS
+
+SYNC_LOOKBACK_DAYS = 90
+INCLUDED_BALANCE_TYPES = {"charge", "payment", "refund", "payment_refund"}
+
+
+@dataclass
+class SyncedTransaction:
+    processor_txn_id: str
+    amount_cents: int
+    fee_cents: int
+    net_cents: int
+    currency: str
+    description: str
+    customer_name: str
+    invoice_number: str
+    txn_timestamp: str
+
+
+def validate_stripe_key(api_key: str) -> None:
+    import stripe
+
+    stripe.api_key = api_key
+    stripe.Balance.retrieve()
+
+
+def fetch_stripe_transactions(api_key: str, created_gte: int | None = None) -> list[SyncedTransaction]:
+    import stripe
+
+    stripe.api_key = api_key
+    params: dict = {"limit": 100}
+    if created_gte:
+        params["created"] = {"gte": created_gte}
+
+    results: list[SyncedTransaction] = []
+    for item in stripe.BalanceTransaction.list(**params).auto_paging_iter():
+        item_type = getattr(item, "type", "charge") or "charge"
+        if item_type not in INCLUDED_BALANCE_TYPES:
+            continue
+        created = datetime.fromtimestamp(item.created, tz=timezone.utc).astimezone(ATHENS).isoformat()
+        source = getattr(item, "source", "") or ""
+        results.append(
+            SyncedTransaction(
+                processor_txn_id=str(item.id),
+                amount_cents=int(item.amount),
+                fee_cents=int(item.fee or 0),
+                net_cents=int(item.net),
+                currency=(item.currency or "eur").upper(),
+                description=item.description or "",
+                customer_name="",
+                invoice_number=str(source),
+                txn_timestamp=created,
+            )
+        )
+        if len(results) >= 500:
+            break
+    return results
+
+
+def _lookback_gte() -> int:
+    return int((datetime.now(timezone.utc) - timedelta(days=SYNC_LOOKBACK_DAYS)).timestamp())
+
+
+async def sync_connection(db, connection_id: int, user_id: int, api_key: str) -> int:
+    fetched = fetch_stripe_transactions(api_key, created_gte=_lookback_gte())
+    inserted = 0
+    for txn in fetched:
+        cursor = await db.execute(
+            """
+            INSERT OR IGNORE INTO transactions (
+                connection_id, user_id, processor_txn_id, amount_cents, fee_cents,
+                net_cents, currency, description, customer_name, invoice_number, txn_timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                connection_id,
+                user_id,
+                txn.processor_txn_id,
+                txn.amount_cents,
+                txn.fee_cents,
+                txn.net_cents,
+                txn.currency,
+                txn.description,
+                txn.customer_name,
+                txn.invoice_number,
+                txn.txn_timestamp,
+            ),
+        )
+        if cursor.rowcount:
+            inserted += 1
+    await db.execute(
+        "UPDATE connections SET last_synced_at = datetime('now') WHERE id = ?",
+        (connection_id,),
+    )
+    await db.execute(
+        "INSERT INTO sync_log (connection_id, status, message) VALUES (?, ?, ?)",
+        (connection_id, "ok", f"synced {inserted} new transactions"),
+    )
+    await db.commit()
+    return inserted
