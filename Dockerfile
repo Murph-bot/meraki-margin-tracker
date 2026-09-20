@@ -11,5 +11,7 @@ COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 COPY backend ./backend
 COPY --from=frontend /frontend/dist ./frontend/dist
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 ENV PYTHONUNBUFFERED=1
-CMD ["sh", "-c", "cd backend && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["/app/start.sh"]
