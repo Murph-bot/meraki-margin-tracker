@@ -20,3 +20,9 @@
 - Email/password auth with bcrypt + JWT
 - Stripe read-only API keys for payment sync
 - Environment variables for secrets (no hardcoded secrets)
+
+---
+
+## File Structure
+
+See local file `docs/superpowers/plans/2026-09-19-meraki-implementation.md` for the complete task-by-task plan covering Phase 0 research, Phase 1 foundation (scaffolding, auth, frontend), Phase 2 core sync (tax engine, margin calculator, Stripe adapter, dashboard APIs/UI), Phase 3 polish and deploy, and the self-review checklist.
