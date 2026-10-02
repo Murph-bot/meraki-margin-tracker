@@ -51,14 +51,21 @@ async def health(db=Depends(get_db)):
     return {"status": "ok"}
 
 
-if FRONTEND_DIST.exists():
-    assets = FRONTEND_DIST / "assets"
+def register_spa(app: FastAPI, dist: Path) -> None:
+    assets = dist / "assets"
     if assets.exists():
         app.mount("/assets", StaticFiles(directory=assets), name="assets")
 
-    @app.get("/{full_path:path}")
+    @app.get("/{full_path:path}", include_in_schema=False)
     async def spa(full_path: str):
-        candidate = FRONTEND_DIST / full_path
-        if full_path and candidate.is_file():
+        root = dist.resolve()
+        # Strip leading slashes: pathlib drops the base dir when joined with an
+        # absolute path, which used to let `//etc/passwd` escape dist/.
+        candidate = (root / full_path.lstrip("/")).resolve()
+        if full_path and candidate.is_relative_to(root) and candidate.is_file():
             return FileResponse(candidate)
-        return FileResponse(FRONTEND_DIST / "index.html")
+        return FileResponse(root / "index.html")
+
+
+if FRONTEND_DIST.exists():
+    register_spa(app, FRONTEND_DIST)
