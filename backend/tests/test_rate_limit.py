@@ -1,4 +1,3 @@
-from unittest.mock import MagicMock, patch
 from app.rate_limit import SlidingWindowLimiter
 
 

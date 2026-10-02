@@ -1,5 +1,4 @@
 from datetime import datetime
-from zoneinfo import ZoneInfo
 from app.timeutil import ATHENS, period_start_iso
 
 
