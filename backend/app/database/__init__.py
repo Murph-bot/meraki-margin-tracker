@@ -8,7 +8,7 @@ async def get_db():
     db = await aiosqlite.connect(str(db_path))
     db.row_factory = aiosqlite.Row
     await db.execute("PRAGMA foreign_keys = ON")
-    await db.execute("PRAGMA journal_mode=WAL")
+    # journal_mode=WAL is persistent in the DB file; init_db sets it once.
     try:
         yield db
     finally:

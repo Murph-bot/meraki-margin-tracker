@@ -72,4 +72,6 @@ SCHEMA = [
         message TEXT,
         run_at TEXT DEFAULT (datetime('now'))
     );""",
+    "CREATE INDEX IF NOT EXISTS idx_transactions_user_ts ON transactions(user_id, txn_timestamp)",
+    "CREATE INDEX IF NOT EXISTS idx_expenses_user ON expenses(user_id)",
 ]
