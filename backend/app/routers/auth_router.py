@@ -1,4 +1,6 @@
 import asyncio
+
+import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from app.auth import hash_password, verify_password, create_token, get_current_user
@@ -75,11 +77,15 @@ async def signup(req: SignupRequest, db=Depends(get_db)):
     if await cursor.fetchone():
         raise HTTPException(status_code=400, detail="Registration failed")
     hashed = await asyncio.to_thread(hash_password, req.password)
-    cursor = await db.execute(
-        "INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)",
-        (req.email, hashed, req.name),
-    )
-    await db.commit()
+    try:
+        cursor = await db.execute(
+            "INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)",
+            (req.email, hashed, req.name),
+        )
+        await db.commit()
+    except aiosqlite.IntegrityError:
+        # A concurrent signup for the same email won the race.
+        raise HTTPException(status_code=400, detail="Registration failed") from None
     user_id = cursor.lastrowid
     token = create_token(user_id)
     return AuthResponse(
