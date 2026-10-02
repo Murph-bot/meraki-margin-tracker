@@ -110,3 +110,15 @@ def test_fetch_does_not_truncate_at_500():
         rows = fetch_stripe_transactions("sk_test_123")
     assert len(rows) == 750
 
+
+
+def test_fetch_passes_api_key_per_request_not_globally():
+    import stripe
+
+    stripe.api_key = None
+    fake_list = MagicMock()
+    fake_list.auto_paging_iter.return_value = []
+    with patch("stripe.BalanceTransaction.list", return_value=fake_list) as listed:
+        fetch_stripe_transactions("sk_test_abc")
+    assert listed.call_args.kwargs["api_key"] == "sk_test_abc"
+    assert stripe.api_key is None

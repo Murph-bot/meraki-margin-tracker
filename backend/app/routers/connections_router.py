@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from app.auth import get_current_user
@@ -48,7 +49,7 @@ async def create_connection(
 ):
     if req.processor == "stripe":
         try:
-            validate_stripe_key(req.api_key)
+            await asyncio.to_thread(validate_stripe_key, req.api_key)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Stripe key rejected: {exc}") from exc
     encrypted = encrypt_secret(req.api_key)

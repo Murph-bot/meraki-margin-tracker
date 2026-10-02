@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from app.timeutil import ATHENS
@@ -24,15 +25,15 @@ class SyncedTransaction:
 def validate_stripe_key(api_key: str) -> None:
     import stripe
 
-    stripe.api_key = api_key
-    stripe.Balance.retrieve()
+    stripe.Balance.retrieve(api_key=api_key)
 
 
 def fetch_stripe_transactions(api_key: str, created_gte: int | None = None) -> list[SyncedTransaction]:
     import stripe
 
-    stripe.api_key = api_key
-    params: dict = {"limit": 100}
+    # Pass the key per request: a module-global stripe.api_key is shared across
+    # concurrent requests and threads, so one user's sync could use another's key.
+    params: dict = {"limit": 100, "api_key": api_key}
     if created_gte:
         params["created"] = {"gte": created_gte}
 
@@ -66,7 +67,8 @@ def _lookback_gte(now: datetime | None = None) -> int:
 
 
 async def sync_connection(db, connection_id: int, user_id: int, api_key: str) -> int:
-    fetched = fetch_stripe_transactions(api_key, created_gte=_lookback_gte())
+    # The Stripe SDK is synchronous; run it off the event loop.
+    fetched = await asyncio.to_thread(fetch_stripe_transactions, api_key, _lookback_gte())
     inserted = 0
     for txn in fetched:
         cursor = await db.execute(

@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from app.auth import hash_password, verify_password, create_token, get_current_user
@@ -73,7 +74,7 @@ async def signup(req: SignupRequest, db=Depends(get_db)):
     cursor = await db.execute("SELECT id FROM users WHERE email = ?", (req.email,))
     if await cursor.fetchone():
         raise HTTPException(status_code=400, detail="Registration failed")
-    hashed = hash_password(req.password)
+    hashed = await asyncio.to_thread(hash_password, req.password)
     cursor = await db.execute(
         "INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)",
         (req.email, hashed, req.name),
@@ -97,9 +98,9 @@ async def login(req: LoginRequest, db=Depends(get_db)):
     )
     row = await cursor.fetchone()
     if not row:
-        verify_password(req.password, _DUMMY_HASH)
+        await asyncio.to_thread(verify_password, req.password, _DUMMY_HASH)
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    if not verify_password(req.password, row["password_hash"]):
+    if not await asyncio.to_thread(verify_password, req.password, row["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_token(row["id"])
     return AuthResponse(token=token, user=_user_from_row(row))
