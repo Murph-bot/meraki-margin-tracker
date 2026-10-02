@@ -108,3 +108,25 @@ async def test_signup_rejects_short_password(client):
         json={"email": "short@example.com", "password": "123", "name": "S"},
     )
     assert response.status_code == 422
+
+
+async def test_token_without_sub_is_401_not_500(client):
+    from datetime import datetime, timedelta, timezone
+
+    import jwt as pyjwt
+
+    from app.config import settings
+
+    token = pyjwt.encode(
+        {"exp": datetime.now(timezone.utc) + timedelta(minutes=5)}, settings.secret_key, algorithm="HS256"
+    )
+    r = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 401
+
+
+async def test_tampered_token_is_401(client):
+    from app.auth import create_token
+
+    token = create_token(1)[:-2] + "xx"
+    r = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 401
