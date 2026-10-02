@@ -1,13 +1,14 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import Navbar from './components/Navbar'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
-import Dashboard from './pages/Dashboard'
+// Dashboard and Reports pull in recharts; load them on demand.
+const Dashboard = lazy(() => import('./pages/Dashboard'))
 import Connections from './pages/Connections'
 import Expenses from './pages/Expenses'
-import Reports from './pages/Reports'
+const Reports = lazy(() => import('./pages/Reports'))
 
 function App() {
   const [token, setToken] = useState<string | null>(
@@ -30,6 +31,7 @@ function App() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} />
       <main className="max-w-5xl mx-auto px-4 py-8 w-full flex-1">
+        <Suspense fallback={<p className="text-sm text-gray-500">Loading…</p>}>
         <Routes>
           <Route path="/" element={isLoggedIn ? <Navigate to="/dashboard" /> : <Landing />} />
           <Route path="/login" element={isLoggedIn ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />} />
@@ -40,6 +42,7 @@ function App() {
           <Route path="/expenses" element={isLoggedIn ? <Expenses /> : <Navigate to="/login" />} />
           <Route path="/reports" element={isLoggedIn ? <Reports /> : <Navigate to="/login" />} />
         </Routes>
+        </Suspense>
       </main>
       <footer className="text-xs text-gray-400 text-center py-6">
         Tax calculations are estimates. Consult your accountant.
