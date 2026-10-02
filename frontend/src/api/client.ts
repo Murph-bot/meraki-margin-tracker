@@ -1,6 +1,4 @@
-import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
-
-type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean }
+import axios, { AxiosError } from 'axios'
 
 const apiClient = axios.create({
   baseURL: '/api',
@@ -15,25 +13,15 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+// The backend has no refresh token: /auth/refresh needs a still-valid JWT, so
+// retrying a 401 through it can never succeed. Drop the stale token instead.
 apiClient.interceptors.response.use(
   response => response,
-  async (error: AxiosError) => {
-    const original = error.config as RetryConfig | undefined
-    if (!original) {
-      return Promise.reject(error)
-    }
-    const url = original.url || ''
-    const skip = url.includes('/auth/login') || url.includes('/auth/signup') || url.includes('/auth/refresh')
-    if (error.response?.status === 401 && !original._retry && !skip) {
-      original._retry = true
-      try {
-        const res = await apiClient.post<{ token: string }>('/auth/refresh')
-        localStorage.setItem('meraki_token', res.data.token)
-        original.headers.Authorization = `Bearer ${res.data.token}`
-        return apiClient.request(original)
-      } catch {
-        localStorage.removeItem('meraki_token')
-      }
+  (error: AxiosError) => {
+    const url = error.config?.url || ''
+    const isAuthCall = url.includes('/auth/login') || url.includes('/auth/signup')
+    if (error.response?.status === 401 && !isAuthCall) {
+      localStorage.removeItem('meraki_token')
     }
     return Promise.reject(error)
   },
