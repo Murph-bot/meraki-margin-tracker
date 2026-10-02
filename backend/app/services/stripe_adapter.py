@@ -2,7 +2,9 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from app.timeutil import ATHENS
 
-SYNC_LOOKBACK_DAYS = 90
+# Dashboard YTD figures (and annualized tax) need every transaction since
+# Jan 1 Athens time. Re-fetching is idempotent (INSERT OR IGNORE on txn id).
+SYNC_LOOKBACK_SLACK_DAYS = 1
 INCLUDED_BALANCE_TYPES = {"charge", "payment", "refund", "payment_refund"}
 
 
@@ -54,13 +56,13 @@ def fetch_stripe_transactions(api_key: str, created_gte: int | None = None) -> l
                 txn_timestamp=created,
             )
         )
-        if len(results) >= 500:
-            break
     return results
 
 
-def _lookback_gte() -> int:
-    return int((datetime.now(timezone.utc) - timedelta(days=SYNC_LOOKBACK_DAYS)).timestamp())
+def _lookback_gte(now: datetime | None = None) -> int:
+    current = (now or datetime.now(timezone.utc)).astimezone(ATHENS)
+    jan1 = current.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    return int((jan1 - timedelta(days=SYNC_LOOKBACK_SLACK_DAYS)).timestamp())
 
 
 async def sync_connection(db, connection_id: int, user_id: int, api_key: str) -> int:
