@@ -30,3 +30,11 @@ def encrypt_secret(plaintext: str) -> str:
 
 def decrypt_secret(token: str) -> str:
     return _fernet().decrypt(token.encode("utf-8")).decode("utf-8")
+
+
+def rotate_secret(token: str) -> str:
+    """Re-encrypt a token under the primary key (ENCRYPTION_KEY when set)."""
+    f = _fernet()
+    if isinstance(f, MultiFernet):
+        return f.rotate(token.encode("utf-8")).decode("utf-8")
+    return token
