@@ -1,7 +1,7 @@
 import asyncio
 
 import aiosqlite
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 from app.auth import hash_password, verify_password, create_token, get_current_user
 from app.database import get_db
@@ -70,8 +70,8 @@ def _user_from_row(row) -> UserResponse:
 
 
 @router.post("/signup")
-async def signup(req: SignupRequest, db=Depends(get_db)):
-    if not auth_allowed(f"signup:{req.email}"):
+async def signup(req: SignupRequest, request: Request, db=Depends(get_db)):
+    if not auth_allowed(request, "signup", req.email):
         raise HTTPException(status_code=429, detail="Too many attempts")
     cursor = await db.execute("SELECT id FROM users WHERE email = ?", (req.email,))
     if await cursor.fetchone():
@@ -95,8 +95,8 @@ async def signup(req: SignupRequest, db=Depends(get_db)):
 
 
 @router.post("/login")
-async def login(req: LoginRequest, db=Depends(get_db)):
-    if not auth_allowed(f"login:{req.email}"):
+async def login(req: LoginRequest, request: Request, db=Depends(get_db)):
+    if not auth_allowed(request, "login", req.email):
         raise HTTPException(status_code=429, detail="Too many attempts")
     cursor = await db.execute(
         "SELECT id, email, name, password_hash, efka_category, years_active, charges_vat FROM users WHERE email = ?",

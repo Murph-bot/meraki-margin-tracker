@@ -2,6 +2,8 @@ import os
 import time
 from collections import defaultdict
 
+from fastapi import Request
+
 
 class SlidingWindowLimiter:
     def __init__(self, max_attempts: int, window_seconds: int):
@@ -34,9 +36,29 @@ class SlidingWindowLimiter:
 
 
 auth_limiter = SlidingWindowLimiter(max_attempts=20, window_seconds=60)
+auth_ip_limiter = SlidingWindowLimiter(max_attempts=50, window_seconds=900)
 
 
-def auth_allowed(key: str) -> bool:
+def get_client_ip(request: Request) -> str:
+    """Return the client IP, preferring the hop our own proxy (Railway) appended.
+
+    The leftmost X-Forwarded-For entry is whatever the client sent and is
+    trivially spoofable, so it must never be trusted for rate limiting. The
+    rightmost entry is appended by the proxy that connects directly to us, so
+    it is the one we trust.
+    """
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
+        if hops:
+            return hops[-1]
+    return request.client.host if request.client else ""
+
+
+def auth_allowed(request: Request, prefix: str, email: str) -> bool:
     if os.environ.get("TESTING") == "1":
         return True
-    return auth_limiter.allow(key)
+    ip = get_client_ip(request)
+    if not auth_ip_limiter.allow(f"ip:{ip}"):
+        return False
+    return auth_limiter.allow(f"{prefix}:{ip}:{email}")
