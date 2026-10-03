@@ -40,18 +40,18 @@ auth_ip_limiter = SlidingWindowLimiter(max_attempts=50, window_seconds=900)
 
 
 def get_client_ip(request: Request) -> str:
-    """Return the client IP, preferring the hop our own proxy (Railway) appended.
+    """Return the client IP to key rate limits on.
 
-    The leftmost X-Forwarded-For entry is whatever the client sent and is
-    trivially spoofable, so it must never be trusted for rate limiting. The
-    rightmost entry is appended by the proxy that connects directly to us, so
-    it is the one we trust.
+    Railway's edge proxy overwrites X-Real-IP with the actual client address
+    before forwarding the request, so that header is trustworthy here. We do
+    not use X-Forwarded-For: on Railway its rightmost hop is the internal
+    proxy hop (not the client), which would collapse the per-IP limiter into
+    a single shared bucket for every user. Fall back to the socket peer when
+    no header is present (e.g. local/dev requests not routed through Railway).
     """
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
-        if hops:
-            return hops[-1]
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip and real_ip.strip():
+        return real_ip.strip()
     return request.client.host if request.client else ""
 
 

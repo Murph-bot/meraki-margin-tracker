@@ -30,8 +30,10 @@ def test_expired_keys_are_evicted(monkeypatch):
     assert len(limiter._hits) == 1
 
 
-def _make_request(ip="9.9.9.9", forwarded_for=None):
+def _make_request(ip="9.9.9.9", real_ip=None, forwarded_for=None):
     headers = []
+    if real_ip is not None:
+        headers.append((b"x-real-ip", real_ip.encode()))
     if forwarded_for is not None:
         headers.append((b"x-forwarded-for", forwarded_for.encode()))
     scope = {
@@ -42,15 +44,29 @@ def _make_request(ip="9.9.9.9", forwarded_for=None):
     return Request(scope)
 
 
-def test_get_client_ip_prefers_rightmost_forwarded_hop():
-    # The leftmost hop is attacker-controlled (sent verbatim by the client);
-    # only the rightmost hop, appended by our own trusted proxy, is safe to use.
-    request = _make_request(ip="10.0.0.1", forwarded_for="203.0.113.7, 10.0.0.1")
-    assert get_client_ip(request) == "10.0.0.1"
+def test_get_client_ip_prefers_real_ip_over_forwarded_for():
+    # On Railway, X-Real-IP is overwritten with the actual client address,
+    # while the rightmost X-Forwarded-For hop is Railway's own internal proxy
+    # hop (here it matches the socket peer, "10.0.0.5"). Under the old
+    # rightmost-XFF behavior this would have returned "10.0.0.5" instead of
+    # the real client IP, so this assertion would fail against that code.
+    request = _make_request(
+        ip="10.0.0.5",
+        real_ip="203.0.113.50",
+        forwarded_for="198.51.100.1, 10.0.0.5",
+    )
+    assert get_client_ip(request) == "203.0.113.50"
+
+
+def test_get_client_ip_ignores_forwarded_for_without_real_ip():
+    # X-Forwarded-For is never trusted for the rate-limit key, even when
+    # present and X-Real-IP is absent.
+    request = _make_request(ip="203.0.113.7", forwarded_for="198.51.100.1, 10.0.0.5")
+    assert get_client_ip(request) == "203.0.113.7"
 
 
 def test_get_client_ip_falls_back_to_socket_peer_without_header():
-    request = _make_request(ip="203.0.113.7", forwarded_for=None)
+    request = _make_request(ip="203.0.113.7")
     assert get_client_ip(request) == "203.0.113.7"
 
 
