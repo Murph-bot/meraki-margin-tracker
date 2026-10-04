@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Navbar from './components/Navbar'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
@@ -11,6 +12,7 @@ import Expenses from './pages/Expenses'
 const Reports = lazy(() => import('./pages/Reports'))
 
 function App() {
+  const { t } = useTranslation()
   const [token, setToken] = useState<string | null>(
     localStorage.getItem('meraki_token')
   )
@@ -31,7 +33,7 @@ function App() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} />
       <main className="max-w-5xl mx-auto px-4 py-8 w-full flex-1">
-        <Suspense fallback={<p className="text-sm text-gray-500">Loading…</p>}>
+        <Suspense fallback={<p className="text-sm text-gray-500">{t('common.loading')}</p>}>
         <Routes>
           <Route path="/" element={isLoggedIn ? <Navigate to="/dashboard" /> : <Landing />} />
           <Route path="/login" element={isLoggedIn ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />} />
@@ -45,7 +47,7 @@ function App() {
         </Suspense>
       </main>
       <footer className="text-xs text-gray-400 text-center py-6">
-        Tax calculations are estimates. Consult your accountant.
+        {t('footer.disclaimer')}
       </footer>
     </div>
   )

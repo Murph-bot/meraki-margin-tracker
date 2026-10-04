@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { apiClient } from '../api/client'
-import { formatCents } from '../lib/format'
+import { apiErrorMessage } from '../i18n/errors'
+import { formatCents, formatEuros, formatMonth } from '../lib/format'
 
 type MonthlyRow = {
   month: string
@@ -21,7 +23,10 @@ type Benchmark = {
   median_rate: number
 }
 
+const slug = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')
+
 export default function Reports() {
+  const { t } = useTranslation()
   const monthly = useQuery({
     queryKey: ['reports-monthly'],
     queryFn: async () => (await apiClient.get<MonthlyRow[]>('/reports/monthly')).data,
@@ -34,26 +39,28 @@ export default function Reports() {
   return (
     <div className="space-y-8">
       <section>
-        <h1 className="text-2xl font-bold mb-4">Monthly breakdown</h1>
-        {!monthly.data?.length && <p className="text-sm text-gray-500">No months to report yet.</p>}
+        <h1 className="text-2xl font-bold mb-4">{t('reports.monthlyTitle')}</h1>
+        {monthly.isLoading && <p className="text-sm text-gray-500">{t('common.loading')}</p>}
+        {monthly.error && <p className="text-sm text-red-600" role="alert">{apiErrorMessage(monthly.error, 'reports.loadError')}</p>}
+        {monthly.isSuccess && !monthly.data.length && <p className="text-sm text-gray-500">{t('reports.empty')}</p>}
         {!!monthly.data?.length && (
           <table className="w-full text-sm bg-white border rounded-xl overflow-hidden">
             <thead className="bg-gray-50 text-left">
               <tr>
-                <th className="p-3">Month</th>
-                <th className="p-3 text-right">Invoiced</th>
-                <th className="p-3 text-right">Fees</th>
-                <th className="p-3 text-right">VAT</th>
-                <th className="p-3 text-right">Expenses</th>
-                <th className="p-3 text-right">Income tax</th>
-                <th className="p-3 text-right">ΕΦΚΑ</th>
-                <th className="p-3 text-right">Take-home</th>
+                <th className="p-3">{t('reports.columns.month')}</th>
+                <th className="p-3 text-right">{t('reports.columns.invoiced')}</th>
+                <th className="p-3 text-right">{t('reports.columns.fees')}</th>
+                <th className="p-3 text-right">{t('reports.columns.vat')}</th>
+                <th className="p-3 text-right">{t('reports.columns.expenses')}</th>
+                <th className="p-3 text-right">{t('reports.columns.incomeTax')}</th>
+                <th className="p-3 text-right">{t('reports.columns.efka')}</th>
+                <th className="p-3 text-right">{t('reports.columns.takeHome')}</th>
               </tr>
             </thead>
             <tbody>
               {monthly.data.map(row => (
                 <tr key={row.month} className="border-t">
-                  <td className="p-3">{row.month}</td>
+                  <td className="p-3">{formatMonth(row.month)}</td>
                   <td className="p-3 text-right">{formatCents(row.invoiced_cents)}</td>
                   <td className="p-3 text-right">{formatCents(row.fees_cents)}</td>
                   <td className="p-3 text-right">{formatCents(row.vat_cents)}</td>
@@ -68,13 +75,13 @@ export default function Reports() {
         )}
       </section>
       <section>
-        <h2 className="text-xl font-semibold mb-4">Greek rate benchmarks</h2>
+        <h2 className="text-xl font-semibold mb-4">{t('reports.benchmarksTitle')}</h2>
         <ul className="space-y-2">
           {benchmarks.data?.map(item => (
             <li key={`${item.profession}-${item.city}`} className="bg-white border rounded-xl p-4">
-              <p className="font-medium">{item.profession} · {item.city}</p>
+              <p className="font-medium">{t(`reports.professions.${slug(item.profession)}`, { defaultValue: item.profession })} · {t(`reports.cities.${slug(item.city)}`, { defaultValue: item.city })}</p>
               <p className="text-sm text-gray-600">
-                €{item.min_rate}–€{item.max_rate}/hr · median €{item.median_rate}
+                {t('reports.benchmarkRange', { min: formatEuros(item.min_rate), max: formatEuros(item.max_rate), median: formatEuros(item.median_rate) })}
               </p>
             </li>
           ))}

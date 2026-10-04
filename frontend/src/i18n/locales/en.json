@@ -1,0 +1,201 @@
+{
+  "meta": {
+    "title": "Meraki — Your true take-home",
+    "description": "See what you really keep after VAT, EFKA social security, income tax and expenses. For freelancers and small businesses in Greece."
+  },
+  "common": {
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "remove": "Remove",
+    "delete": "Delete",
+    "never": "never",
+    "perHour": "/hr",
+    "perMonth": "/mo"
+  },
+  "language": {
+    "label": "Language",
+    "el": "Ελληνικά",
+    "en": "English"
+  },
+  "nav": {
+    "main": "Main navigation",
+    "dashboard": "Dashboard",
+    "connections": "Connections",
+    "expenses": "Expenses",
+    "reports": "Reports",
+    "logout": "Log out",
+    "login": "Log in",
+    "signup": "Sign up"
+  },
+  "footer": {
+    "disclaimer": "Tax calculations are estimates. Consult your accountant."
+  },
+  "processors": {
+    "stripe": "Stripe",
+    "viva": "Viva Wallet"
+  },
+  "landing": {
+    "tagline": "Your true take-home. Finally.",
+    "description": "Connect your payment processor and see exactly what you keep after Stripe fees, income tax, social security, and expenses.",
+    "cta": "Start for free",
+    "note": "No credit card needed • 2-minute setup"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "fullName": "Full name",
+    "passwordNew": "Password (min 8 characters)",
+    "login": {
+      "title": "Log in to Meraki",
+      "submit": "Log in",
+      "failed": "Login failed",
+      "noAccount": "No account?",
+      "signupLink": "Sign up"
+    },
+    "signup": {
+      "title": "Create your Meraki account",
+      "submit": "Sign up",
+      "failed": "Signup failed",
+      "haveAccount": "Already have an account?",
+      "loginLink": "Log in"
+    }
+  },
+  "dashboard": {
+    "loading": "Loading your take-home…",
+    "loadError": "Could not load dashboard.",
+    "efkaCategory": "EFKA category",
+    "efkaCategoryAria": "EFKA category",
+    "yearsActive": "Years active",
+    "hoursThisMonth": "Hours this month",
+    "hoursAria": "Hours worked",
+    "chargeVat": "Charge 24% VAT",
+    "chargeVatAria": "Charge VAT",
+    "refreshAria": "Refresh from processors",
+    "missingConnections_one": "Missing connection: {{list}}.",
+    "missingConnections_other": "Missing connections: {{list}}.",
+    "connectProcessor": "Connect a processor",
+    "disclaimer": "Tax estimates are approximate and based on 2026 Greek rates for self-employed individuals. Always consult your accountant."
+  },
+  "takeHome": {
+    "title": "Your true take-home this month",
+    "from": "from {{amount}} invoiced",
+    "keep": "You keep <strong>{{percent}}</strong> of what you invoice",
+    "hourly": "{{amount}}/hr effective"
+  },
+  "breakdown": {
+    "title": "Where the money goes",
+    "gross": "Gross invoiced",
+    "vat": "VAT (24%, pass-through)",
+    "fees": "Processor fees",
+    "expenses": "Expenses",
+    "incomeTax": "Income tax",
+    "socialSecurity": "EFKA + OAED",
+    "prepayment": "Tax prepayment (cash timing)",
+    "net": "Net take-home"
+  },
+  "chart": {
+    "title": "Margin trend",
+    "empty": "No synced transactions yet.",
+    "series": "Net take-home"
+  },
+  "connections": {
+    "title": "Connections",
+    "add": "Add connection",
+    "processor": "Processor",
+    "label": "Label",
+    "labelPlaceholder": "Main account",
+    "apiKey": "Restricted API key",
+    "apiKeyAria": "API key",
+    "hint": "Use a read-only Stripe restricted key. Keys are encrypted at rest.",
+    "save": "Save connection",
+    "saveFailed": "Could not save connection",
+    "syncFailed": "Sync failed",
+    "removeFailed": "Could not remove connection",
+    "lastSync": "Last sync: {{when}}",
+    "empty": "No processors connected yet."
+  },
+  "expenses": {
+    "title": "Expenses",
+    "add": "Add expense",
+    "amountPlaceholder": "Amount in EUR",
+    "amount": "Amount",
+    "category": "Category",
+    "description": "Description",
+    "date": "Date",
+    "recurring": "Recurring monthly",
+    "invalidAmount": "Enter a valid amount",
+    "saveFailed": "Could not save expense",
+    "deleteFailed": "Could not delete expense",
+    "empty": "No expenses yet.",
+    "categories": {
+      "software": "Software",
+      "hardware": "Hardware",
+      "office": "Office",
+      "travel": "Travel",
+      "professional_services": "Professional services",
+      "other": "Other"
+    }
+  },
+  "reports": {
+    "monthlyTitle": "Monthly breakdown",
+    "empty": "No months to report yet.",
+    "loadError": "Could not load reports.",
+    "columns": {
+      "month": "Month",
+      "invoiced": "Invoiced",
+      "fees": "Fees",
+      "vat": "VAT",
+      "expenses": "Expenses",
+      "incomeTax": "Income tax",
+      "efka": "EFKA",
+      "takeHome": "Take-home"
+    },
+    "benchmarksTitle": "Greek rate benchmarks",
+    "benchmarkRange": "{{min}}–{{max}}/hr · median {{median}}",
+    "professions": {
+      "software_developer": "Software developer",
+      "product_designer": "Product designer",
+      "consultant": "Consultant"
+    },
+    "cities": {
+      "athens": "Athens",
+      "thessaloniki": "Thessaloniki"
+    }
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Could not reach the server. Check your internet connection and try again.",
+    "server": "A server error occurred. Please try again shortly.",
+    "badRequest": "The request was not valid.",
+    "unauthorized": "Your session has expired. Please log in again.",
+    "forbidden": "You do not have permission to do that.",
+    "notFound": "The item was not found.",
+    "conflict": "This action conflicts with existing data.",
+    "validation": "Please check the details you entered and try again.",
+    "validationField": "Invalid value in the “{{field}}” field.",
+    "tooManyRequests": "Too many requests. Please try again shortly.",
+    "notImplemented": "This feature is not available yet.",
+    "tooManyAttempts": "Too many attempts. Please try again shortly.",
+    "registrationFailed": "Registration failed. Check your details or try a different email.",
+    "invalidCredentials": "Incorrect email or password.",
+    "sessionExpired": "Your session has expired. Please log in again.",
+    "userNotFound": "User not found.",
+    "expenseNotFound": "Expense not found.",
+    "connectionNotFound": "Connection not found.",
+    "vivaNotAvailable": "Viva Wallet sync is not available yet.",
+    "stripeKeyRejected": "The Stripe key was rejected. Check that it is correct and has read access.",
+    "fields": {
+      "email": "Email",
+      "password": "Password",
+      "name": "Full name",
+      "apiKey": "API key",
+      "label": "Label",
+      "amount": "Amount",
+      "category": "Category",
+      "description": "Description",
+      "date": "Date"
+    }
+  }
+}
