@@ -1,7 +1,7 @@
 import os
 import tempfile
 
-os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-0123456789abcdef")
 os.environ.setdefault("TESTING", "1")
 
 _tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)

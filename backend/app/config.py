@@ -19,6 +19,9 @@ class Settings(BaseSettings):
 
     database_path: str = "data/meraki.db"
     secret_key: str
+    # Fernet key (Fernet.generate_key()) for stored processor API keys. Optional;
+    # when unset, the legacy SECRET_KEY-derived key is used.
+    encryption_key: str = ""
     stripe_api_key: str = ""
     viva_api_key: str = ""
     viva_client_id: str = ""

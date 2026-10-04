@@ -1,7 +1,8 @@
 from types import SimpleNamespace
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+from app.timeutil import ATHENS
 from app.services.stripe_adapter import fetch_stripe_transactions, sync_connection
 
 
@@ -79,7 +80,7 @@ async def test_sync_connection_inserts_and_is_idempotent(db):
     assert row["n"] == 1
 
 
-async def test_sync_connection_requests_last_90_days(db):
+async def test_sync_connection_requests_since_jan1_athens(db):
     await db.execute(
         "INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)",
         ("t@example.com", "hash", "T"),
@@ -94,5 +95,30 @@ async def test_sync_connection_requests_last_90_days(db):
     with patch("stripe.BalanceTransaction.list", return_value=fake_list) as listed:
         await sync_connection(db, 1, 1, "sk_test_123")
     gte = listed.call_args.kwargs["created"]["gte"]
-    now = int(datetime.now(timezone.utc).timestamp())
-    assert now - 91 * 86400 <= gte <= now - 89 * 86400
+    # YTD figures need every transaction since Jan 1 (Athens), not just 90 days.
+    jan1 = datetime.now(ATHENS).replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    assert gte <= int(jan1.timestamp())
+    assert gte >= int(jan1.timestamp()) - 86400
+
+
+def test_fetch_does_not_truncate_at_500():
+    fake_list = MagicMock()
+    fake_list.auto_paging_iter.return_value = [
+        _txn(f"txn_{i}", 1000, 30, 970) for i in range(750)
+    ]
+    with patch("stripe.BalanceTransaction.list", return_value=fake_list):
+        rows = fetch_stripe_transactions("sk_test_123")
+    assert len(rows) == 750
+
+
+
+def test_fetch_passes_api_key_per_request_not_globally():
+    import stripe
+
+    stripe.api_key = None
+    fake_list = MagicMock()
+    fake_list.auto_paging_iter.return_value = []
+    with patch("stripe.BalanceTransaction.list", return_value=fake_list) as listed:
+        fetch_stripe_transactions("sk_test_abc")
+    assert listed.call_args.kwargs["api_key"] == "sk_test_abc"
+    assert stripe.api_key is None

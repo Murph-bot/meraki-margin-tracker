@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
-from jose import jwt, JWTError
+import jwt
+from jwt import PyJWTError
 from bcrypt import hashpw, gensalt, checkpw
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -37,5 +38,5 @@ async def get_current_user(
         if not await cursor.fetchone():
             raise HTTPException(status_code=401, detail="Invalid token")
         return user_id
-    except (JWTError, ValueError):
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except (PyJWTError, KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid token") from None

@@ -34,3 +34,14 @@ async def test_init_db_adds_missing_user_columns(tmp_path, monkeypatch):
     assert user["efka_category"] == 1
     assert user["years_active"] == 1
     assert user["charges_vat"] == 0
+
+
+async def test_init_db_creates_query_indexes(tmp_path, monkeypatch):
+    db_file = tmp_path / "fresh.db"
+    monkeypatch.setattr(settings, "database_path", str(db_file))
+    await init_db()
+    async with aiosqlite.connect(db_file) as db:
+        cursor = await db.execute("SELECT name FROM sqlite_master WHERE type = 'index'")
+        names = {row[0] for row in await cursor.fetchall()}
+    assert "idx_transactions_user_ts" in names
+    assert "idx_expenses_user" in names

@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timedelta, timezone
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.config import settings
 
@@ -11,15 +12,23 @@ def start_scheduler() -> None:
         return
     if _scheduler is not None:
         return
-    _scheduler = AsyncIOScheduler()
-    _scheduler.add_job(
+    _scheduler = build_scheduler()
+    _scheduler.start()
+
+
+def build_scheduler() -> AsyncIOScheduler:
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
         sync_all_connections,
         "interval",
         hours=settings.sync_interval_hours,
         id="daily_sync",
         replace_existing=True,
+        # Without this the first run is a full interval after boot, so frequent
+        # redeploys meant the sync never ran. Start shortly after startup.
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=1),
     )
-    _scheduler.start()
+    return scheduler
 
 
 def stop_scheduler() -> None:

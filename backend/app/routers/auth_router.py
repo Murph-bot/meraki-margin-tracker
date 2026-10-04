@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+import asyncio
+
+import aiosqlite
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 from app.auth import hash_password, verify_password, create_token, get_current_user
 from app.database import get_db
@@ -67,18 +70,22 @@ def _user_from_row(row) -> UserResponse:
 
 
 @router.post("/signup")
-async def signup(req: SignupRequest, db=Depends(get_db)):
-    if not auth_allowed(f"signup:{req.email}"):
+async def signup(req: SignupRequest, request: Request, db=Depends(get_db)):
+    if not auth_allowed(request, "signup", req.email):
         raise HTTPException(status_code=429, detail="Too many attempts")
     cursor = await db.execute("SELECT id FROM users WHERE email = ?", (req.email,))
     if await cursor.fetchone():
         raise HTTPException(status_code=400, detail="Registration failed")
-    hashed = hash_password(req.password)
-    cursor = await db.execute(
-        "INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)",
-        (req.email, hashed, req.name),
-    )
-    await db.commit()
+    hashed = await asyncio.to_thread(hash_password, req.password)
+    try:
+        cursor = await db.execute(
+            "INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)",
+            (req.email, hashed, req.name),
+        )
+        await db.commit()
+    except aiosqlite.IntegrityError:
+        # A concurrent signup for the same email won the race.
+        raise HTTPException(status_code=400, detail="Registration failed") from None
     user_id = cursor.lastrowid
     token = create_token(user_id)
     return AuthResponse(
@@ -88,8 +95,8 @@ async def signup(req: SignupRequest, db=Depends(get_db)):
 
 
 @router.post("/login")
-async def login(req: LoginRequest, db=Depends(get_db)):
-    if not auth_allowed(f"login:{req.email}"):
+async def login(req: LoginRequest, request: Request, db=Depends(get_db)):
+    if not auth_allowed(request, "login", req.email):
         raise HTTPException(status_code=429, detail="Too many attempts")
     cursor = await db.execute(
         "SELECT id, email, name, password_hash, efka_category, years_active, charges_vat FROM users WHERE email = ?",
@@ -97,9 +104,9 @@ async def login(req: LoginRequest, db=Depends(get_db)):
     )
     row = await cursor.fetchone()
     if not row:
-        verify_password(req.password, _DUMMY_HASH)
+        await asyncio.to_thread(verify_password, req.password, _DUMMY_HASH)
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    if not verify_password(req.password, row["password_hash"]):
+    if not await asyncio.to_thread(verify_password, req.password, row["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_token(row["id"])
     return AuthResponse(token=token, user=_user_from_row(row))

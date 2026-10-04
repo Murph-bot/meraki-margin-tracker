@@ -305,3 +305,24 @@ async def test_dashboard_includes_recurring_expense_from_prior_month(client):
     dash = await client.get("/api/dashboard", headers=headers)
     assert dash.status_code == 200
     assert dash.json()["expenses_cents"] == 2500
+
+
+async def test_signup_integrity_error_returns_400_not_500(client, db, monkeypatch):
+    """Two concurrent signups can both pass the SELECT and race on the UNIQUE index."""
+    import aiosqlite
+
+    real_execute = db.execute
+
+    async def racing_execute(sql, params=()):
+        if sql.lstrip().upper().startswith("SELECT ID FROM USERS WHERE EMAIL"):
+            return await real_execute("SELECT 1 WHERE 0")
+        if sql.lstrip().upper().startswith("INSERT INTO USERS"):
+            raise aiosqlite.IntegrityError("UNIQUE constraint failed: users.email")
+        return await real_execute(sql, params)
+
+    monkeypatch.setattr(db, "execute", racing_execute)
+    r = await client.post(
+        "/api/auth/signup",
+        json={"email": "race@example.com", "password": "correct-horse-battery", "name": "R"},
+    )
+    assert r.status_code == 400
