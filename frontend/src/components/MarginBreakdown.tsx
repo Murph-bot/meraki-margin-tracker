@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { formatCents } from '../lib/format'
 
 type Props = {
@@ -12,20 +13,21 @@ type Props = {
 }
 
 export default function MarginBreakdown(props: Props) {
+  const { t } = useTranslation()
   const rows = [
-    { label: 'Gross invoiced', value: props.invoicedCents },
-    { label: 'VAT (24%, pass-through)', value: props.vatCents },
-    { label: 'Processor fees', value: props.feesCents },
-    { label: 'Expenses', value: props.expensesCents },
-    { label: 'Income tax', value: props.incomeTaxCents },
-    { label: 'ΕΦΚΑ + OAED', value: props.socialSecurityCents },
-    { label: 'Tax prepayment (cash timing)', value: props.prepaymentCents },
-    { label: 'Net take-home', value: props.netCents },
+    { label: t('breakdown.gross'), value: props.invoicedCents },
+    { label: t('breakdown.vat'), value: props.vatCents },
+    { label: t('breakdown.fees'), value: props.feesCents },
+    { label: t('breakdown.expenses'), value: props.expensesCents },
+    { label: t('breakdown.incomeTax'), value: props.incomeTaxCents },
+    { label: t('breakdown.socialSecurity'), value: props.socialSecurityCents },
+    { label: t('breakdown.prepayment'), value: props.prepaymentCents },
+    { label: t('breakdown.net'), value: props.netCents },
   ]
 
   return (
     <section className="bg-white rounded-xl border p-6 shadow-sm">
-      <h2 className="font-semibold mb-4">Where the money goes</h2>
+      <h2 className="font-semibold mb-4">{t('breakdown.title')}</h2>
       <table className="w-full text-sm">
         <tbody>
           {rows.map(row => (

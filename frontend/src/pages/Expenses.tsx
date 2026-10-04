@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { apiClient } from '../api/client'
+import { apiErrorMessage } from '../i18n/errors'
 import ExpenseForm from '../components/ExpenseForm'
-import { formatCents } from '../lib/format'
+import { formatCents, formatDate } from '../lib/format'
 
 type Expense = {
   id: number
@@ -12,6 +14,7 @@ type Expense = {
 }
 
 export default function Expenses() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { data = [] } = useQuery({
     queryKey: ['expenses'],
@@ -45,20 +48,23 @@ export default function Expenses() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Expenses</h1>
+      <h1 className="text-2xl font-bold">{t('expenses.title')}</h1>
+      {deleteMutation.error && (
+        <p className="text-red-600 text-sm" role="alert">{apiErrorMessage(deleteMutation.error, 'expenses.deleteFailed')}</p>
+      )}
       <ExpenseForm onSubmit={async payload => { await createMutation.mutateAsync(payload) }} />
       <ul className="space-y-2">
         {data.map(item => (
           <li key={item.id} className="bg-white border rounded-xl p-4 flex justify-between items-center">
             <div>
-              <p className="font-medium">{formatCents(item.amount_cents)} · {item.category}</p>
-              <p className="text-sm text-gray-500">{item.date} {item.description}</p>
+              <p className="font-medium">{formatCents(item.amount_cents)} · {t(`expenses.categories.${item.category}`, { defaultValue: item.category })}</p>
+              <p className="text-sm text-gray-500">{formatDate(item.date)} {item.description}</p>
             </div>
             <button type="button" onClick={() => deleteMutation.mutate(item.id)}
-              className="text-sm text-red-600 hover:underline">Delete</button>
+              className="text-sm text-red-600 hover:underline">{t('common.delete')}</button>
           </li>
         ))}
-        {data.length === 0 && <p className="text-sm text-gray-500">No expenses yet.</p>}
+        {data.length === 0 && <p className="text-sm text-gray-500">{t('expenses.empty')}</p>}
       </ul>
     </div>
   )
