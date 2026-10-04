@@ -54,13 +54,13 @@ async def record_daily_snapshots(db) -> None:
             """
             SELECT amount_cents, fee_cents, net_cents
             FROM transactions
-            WHERE user_id = ? AND txn_timestamp >= ?
+            WHERE user_id = ? AND txn_timestamp >= ? AND deleted_at IS NULL
             """,
             (user_id, start),
         )
         transactions = [dict(row) for row in await tx_cursor.fetchall()]
         exp_cursor = await db.execute(
-            "SELECT amount_cents, date, recurring, interval_days FROM expenses WHERE user_id = ?",
+            "SELECT amount_cents, date, recurring, interval_days FROM expenses WHERE user_id = ? AND deleted_at IS NULL",
             (user_id,),
         )
         expenses = expand_expenses(
@@ -111,7 +111,7 @@ async def sync_all_connections() -> None:
     db = await agen.__anext__()
     try:
         cursor = await db.execute(
-            "SELECT id, user_id, processor, api_key_encrypted FROM connections"
+            "SELECT id, user_id, processor, api_key_encrypted FROM connections WHERE deleted_at IS NULL"
         )
         rows = await cursor.fetchall()
         for row in rows:

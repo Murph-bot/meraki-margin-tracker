@@ -16,7 +16,7 @@ async def list_transactions(
         SELECT id, connection_id, processor_txn_id, amount_cents, fee_cents, net_cents,
                currency, description, txn_timestamp
         FROM transactions
-        WHERE user_id = ?
+        WHERE user_id = ? AND deleted_at IS NULL
         ORDER BY txn_timestamp DESC
         LIMIT ?
         """,

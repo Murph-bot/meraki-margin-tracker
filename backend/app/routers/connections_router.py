@@ -5,6 +5,7 @@ from app.auth import get_current_user
 from app.crypto import encrypt_secret, decrypt_secret
 from app.database import get_db
 from app.services.stripe_adapter import validate_stripe_key, sync_connection
+from app.services.soft_delete import restore_connection, soft_delete_connection
 from app.services.viva_adapter import VivaNotImplementedError, sync_viva
 
 router = APIRouter(prefix="/api/connections", tags=["connections"])
@@ -26,7 +27,8 @@ class ConnectionResponse(BaseModel):
 @router.get("")
 async def list_connections(user_id: int = Depends(get_current_user), db=Depends(get_db)):
     cursor = await db.execute(
-        "SELECT id, processor, label, last_synced_at FROM connections WHERE user_id = ? ORDER BY id",
+        "SELECT id, processor, label, last_synced_at FROM connections "
+        "WHERE user_id = ? AND deleted_at IS NULL ORDER BY id",
         (user_id,),
     )
     rows = await cursor.fetchall()
@@ -85,21 +87,19 @@ async def delete_connection(
     user_id: int = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    cursor = await db.execute(
-        "SELECT id FROM connections WHERE id = ? AND user_id = ?",
-        (connection_id, user_id),
-    )
-    if not await cursor.fetchone():
+    if not await soft_delete_connection(db, connection_id, user_id):
         raise HTTPException(status_code=404, detail="Connection not found")
-    await db.execute(
-        "DELETE FROM transactions WHERE connection_id = ? AND user_id = ?",
-        (connection_id, user_id),
-    )
-    await db.execute(
-        "DELETE FROM connections WHERE id = ? AND user_id = ?",
-        (connection_id, user_id),
-    )
-    await db.commit()
+    return {"ok": True}
+
+
+@router.post("/{connection_id}/restore")
+async def restore_connection_endpoint(
+    connection_id: int,
+    user_id: int = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    if not await restore_connection(db, connection_id, user_id):
+        raise HTTPException(status_code=404, detail="Connection not found")
     return {"ok": True}
 
 
@@ -110,7 +110,8 @@ async def trigger_sync(
     db=Depends(get_db),
 ):
     cursor = await db.execute(
-        "SELECT id, processor, api_key_encrypted FROM connections WHERE id = ? AND user_id = ?",
+        "SELECT id, processor, api_key_encrypted FROM connections "
+        "WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
         (connection_id, user_id),
     )
     row = await cursor.fetchone()

@@ -22,10 +22,16 @@ async def get_db():
     finally:
         await db.close()
 
+# Tables _column_names may inspect. The name is interpolated into PRAGMA
+# table_info (PRAGMAs cannot be parameterised), hence the allowlist.
+MIGRATABLE_TABLES = frozenset({"users", "connections", "transactions", "expenses"})
+SOFT_DELETE_TABLES = ("connections", "transactions", "expenses")
+
+
 async def _column_names(db, table: str) -> set[str]:
-    if table != "users":
+    if table not in MIGRATABLE_TABLES:
         raise ValueError("unsupported table")
-    cursor = await db.execute("PRAGMA table_info(users)")
+    cursor = await db.execute(f"PRAGMA table_info({table})")
     return {row[1] for row in await cursor.fetchall()}
 
 
@@ -43,6 +49,12 @@ async def _apply_migrations(db) -> None:
         await db.execute(
             "ALTER TABLE users ADD COLUMN charges_vat INTEGER NOT NULL DEFAULT 0"
         )
+    for table in SOFT_DELETE_TABLES:
+        if "deleted_at" not in await _column_names(db, table):
+            await db.execute(f"ALTER TABLE {table} ADD COLUMN deleted_at TEXT")
+    from app.database.schema import SOFT_DELETE_INDEXES
+    for statement in SOFT_DELETE_INDEXES:
+        await db.execute(statement)
 
 
 async def init_db():

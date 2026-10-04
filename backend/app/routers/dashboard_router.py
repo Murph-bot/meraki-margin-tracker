@@ -48,14 +48,14 @@ async def get_dashboard(
         """
         SELECT amount_cents, fee_cents, net_cents, txn_timestamp
         FROM transactions
-        WHERE user_id = ? AND txn_timestamp >= ?
+        WHERE user_id = ? AND txn_timestamp >= ? AND deleted_at IS NULL
         """,
         (user_id, start),
     )
     transactions = [dict(row) for row in await cursor.fetchall()]
 
     cursor = await db.execute(
-        "SELECT amount_cents, date, recurring, interval_days FROM expenses WHERE user_id = ?",
+        "SELECT amount_cents, date, recurring, interval_days FROM expenses WHERE user_id = ? AND deleted_at IS NULL",
         (user_id,),
     )
     expenses = expand_expenses(
@@ -85,7 +85,7 @@ async def get_dashboard(
     )
 
     cursor = await db.execute(
-        "SELECT processor FROM connections WHERE user_id = ?", (user_id,)
+        "SELECT processor FROM connections WHERE user_id = ? AND deleted_at IS NULL", (user_id,)
     )
     connected = {row["processor"] for row in await cursor.fetchall()}
     missing = [name for name in ("stripe", "viva") if name not in connected]
