@@ -6,6 +6,12 @@ Every connection runs in WAL mode (`synchronous=NORMAL`, `busy_timeout=5000`), s
 `cp meraki.db` can miss data in the `-wal` file or capture a torn state. Always back up
 with the script below, which uses SQLite's online backup API.
 
+Related docs: continuous off-host replication to Cloudflare R2 is in
+[litestream.md](litestream.md); undoing deletes and purging old rows is in
+[soft-deletes.md](soft-deletes.md). Prove a backup is usable with
+`python -m app.scripts.restore_test --source local` (restores the newest backup into a temp
+file, runs `PRAGMA integrity_check`, prints row counts).
+
 ## Taking a backup
 
 From `backend/`:
@@ -23,34 +29,23 @@ python -m app.scripts.backup_db --keep 30
 - Backups live next to the database, so they protect against corruption and bad writes but
   **not** against loss of the disk/volume. Copy them off-host if that matters.
 
-## Scheduling nightly
+## Running it (manual only)
 
-### Railway
+Backups are **manual by design**: there is no cron job, in-app timer or Railway cron for
+this script, and none should be added without the owner's say-so. The only automatic
+protection is Litestream's continuous replication ([litestream.md](litestream.md)).
 
-A Railway volume can only be attached to **one service**. A separate cron service therefore
-cannot see the app's volume (and so cannot read the DB or write backups to it). Practical
-options:
+Run it on request, inside the app container so it can reach the volume (a Railway volume
+is attached to a single service):
 
-1. **Run it inside the app service.** For example, an in-app scheduler (APScheduler or
-   an asyncio task) that calls `backup_database(settings.database_path)` once a day. The
-   app already has a periodic sync (`sync_interval_hours`), so this fits the existing
-   pattern. This is not implemented yet.
-2. **External trigger.** Expose a protected endpoint or use `railway ssh`/`railway run`
-   from a scheduler you control (GitHub Actions cron, a VPS cron) that executes
-   `python -m app.scripts.backup_db` in the app's container. Note that `railway run`
-   executes locally with Railway variables, not inside the container, so it does not
-   reach the volume; use `railway ssh` or an authenticated endpoint instead.
-3. **Railway's own volume backups**, if your plan offers them, as an additional layer.
-
-### Self-hosted (system cron)
-
-```cron
-# 03:15 every night
-15 3 * * * cd /path/to/repo/backend && /path/to/.venv/bin/python -m app.scripts.backup_db >> /var/log/meraki-backup.log 2>&1
+```bash
+railway ssh            # opens a shell in the running app container
+cd /app/backend && python -m app.scripts.backup_db
 ```
 
-Make sure the environment (`SECRET_KEY`, `DATABASE_PATH`, …) is available to cron, e.g. via
-the repo's `.env` in `backend/`.
+Note that `railway run` executes on your own machine with the Railway variables, not inside
+the container, so it cannot see the volume. Self-hosted: run the same command from
+`backend/` with the app's environment (`SECRET_KEY`, `DATABASE_PATH`, ...) loaded.
 
 ## Restoring
 
