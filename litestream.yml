@@ -1,0 +1,18 @@
+# Litestream (v0.5.x) continuous replication of the SQLite database to Cloudflare R2.
+# Used by start.sh, which exports every ${...} variable below. See docs/litestream.md.
+#
+# Retention: Litestream's defaults apply. Old snapshots are kept for 24h
+# (snapshot.retention), which bounds how far back point-in-time restore can go. To keep
+# longer, add at the top level, e.g.:
+#
+#   snapshot:
+#     interval: 24h
+#     retention: 168h   # 7 days
+dbs:
+  - path: ${LITESTREAM_DB_PATH}
+    replica:
+      url: ${LITESTREAM_REPLICA_URL}           # e.g. s3://meraki-db-backup/meraki.db
+      endpoint: ${LITESTREAM_ENDPOINT}         # e.g. https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+      region: auto
+      access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+      secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}

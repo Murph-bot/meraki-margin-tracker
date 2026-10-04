@@ -76,7 +76,9 @@ async def sync_connection(db, connection_id: int, user_id: int, api_key: str) ->
             INSERT OR IGNORE INTO transactions (
                 connection_id, user_id, processor_txn_id, amount_cents, fee_cents,
                 net_cents, currency, description, customer_name, invoice_number, txn_timestamp
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            )
+            SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            WHERE EXISTS (SELECT 1 FROM connections WHERE id = ? AND deleted_at IS NULL)
             """,
             (
                 connection_id,
@@ -90,6 +92,8 @@ async def sync_connection(db, connection_id: int, user_id: int, api_key: str) ->
                 txn.customer_name,
                 txn.invoice_number,
                 txn.txn_timestamp,
+                # Skip rows if the connection was soft-deleted while the sync ran.
+                connection_id,
             ),
         )
         if cursor.rowcount:

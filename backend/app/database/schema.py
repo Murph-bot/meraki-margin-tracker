@@ -19,6 +19,7 @@ SCHEMA = [
         api_key_encrypted TEXT NOT NULL,
         last_synced_at TEXT,
         created_at TEXT DEFAULT (datetime('now')),
+        deleted_at TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id)
     );""",
     """CREATE TABLE IF NOT EXISTS transactions (
@@ -35,6 +36,7 @@ SCHEMA = [
         invoice_number TEXT DEFAULT '',
         txn_timestamp TEXT NOT NULL,
         synced_at TEXT DEFAULT (datetime('now')),
+        deleted_at TEXT,
         FOREIGN KEY (connection_id) REFERENCES connections(id),
         FOREIGN KEY (user_id) REFERENCES users(id),
         UNIQUE (connection_id, processor_txn_id)
@@ -49,6 +51,7 @@ SCHEMA = [
         recurring INTEGER DEFAULT 0,
         interval_days INTEGER DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now')),
+        deleted_at TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id)
     );""",
     """CREATE TABLE IF NOT EXISTS margin_snapshots (
@@ -74,4 +77,11 @@ SCHEMA = [
     );""",
     "CREATE INDEX IF NOT EXISTS idx_transactions_user_ts ON transactions(user_id, txn_timestamp)",
     "CREATE INDEX IF NOT EXISTS idx_expenses_user ON expenses(user_id)",
+]
+
+# Run by _apply_migrations, after deleted_at is guaranteed to exist (old databases
+# only gain the column through ALTER TABLE, so these cannot live in SCHEMA).
+SOFT_DELETE_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_expenses_user_live ON expenses(user_id) WHERE deleted_at IS NULL",
+    "CREATE INDEX IF NOT EXISTS idx_connections_user_live ON connections(user_id) WHERE deleted_at IS NULL",
 ]

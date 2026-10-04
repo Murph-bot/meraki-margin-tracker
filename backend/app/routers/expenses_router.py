@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, field_validator
 from datetime import date as date_cls
 from app.auth import get_current_user
 from app.database import get_db
+from app.services.soft_delete import restore_expense, soft_delete_expense
 
 router = APIRouter(prefix="/api/expenses", tags=["expenses"])
 
@@ -56,7 +57,7 @@ def _row_to_expense(row) -> ExpenseResponse:
 @router.get("")
 async def list_expenses(user_id: int = Depends(get_current_user), db=Depends(get_db)):
     cursor = await db.execute(
-        "SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC, id DESC",
+        "SELECT * FROM expenses WHERE user_id = ? AND deleted_at IS NULL ORDER BY date DESC, id DESC",
         (user_id,),
     )
     rows = await cursor.fetchall()
@@ -103,11 +104,17 @@ async def delete_expense(
     user_id: int = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    cursor = await db.execute(
-        "DELETE FROM expenses WHERE id = ? AND user_id = ?",
-        (expense_id, user_id),
-    )
-    await db.commit()
-    if cursor.rowcount == 0:
+    if not await soft_delete_expense(db, expense_id, user_id):
+        raise HTTPException(status_code=404, detail="Expense not found")
+    return {"ok": True}
+
+
+@router.post("/{expense_id}/restore")
+async def restore_expense_endpoint(
+    expense_id: int,
+    user_id: int = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    if not await restore_expense(db, expense_id, user_id):
         raise HTTPException(status_code=404, detail="Expense not found")
     return {"ok": True}

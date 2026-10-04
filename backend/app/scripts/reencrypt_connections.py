@@ -10,6 +10,8 @@ from app.database import get_db
 
 
 async def reencrypt_all(db) -> int:
+    # Deliberately includes soft-deleted connections: they can still be restored within
+    # the retention window and must stay decryptable after SECRET_KEY is rotated.
     cursor = await db.execute("SELECT id, api_key_encrypted FROM connections")
     rows = await cursor.fetchall()
     for row in rows:
