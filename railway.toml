@@ -3,7 +3,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "/app/start.sh"
+startCommand = "sh -c 'cd /app/backend && python -m app.scripts.reencrypt_connections && exec /app/start.sh'"
 healthcheckPath = "/health"
 healthcheckInterval = 30
 overlapSeconds = 0
