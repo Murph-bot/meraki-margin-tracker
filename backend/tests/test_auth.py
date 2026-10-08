@@ -130,3 +130,25 @@ async def test_tampered_token_is_401(client):
     token = create_token(1)[:-2] + "xx"
     r = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 401
+
+
+async def test_password_over_bcrypt_limit_is_422_not_500(client):
+    # 37 Greek letters = 74 bytes in UTF-8, past bcrypt's 72-byte limit.
+    long_password = "α" * 37
+    signup = await client.post(
+        "/api/auth/signup",
+        json={"email": "long@example.com", "password": long_password, "name": "Long"},
+    )
+    assert signup.status_code == 422
+    login = await client.post(
+        "/api/auth/login", json={"email": "long@example.com", "password": long_password}
+    )
+    assert login.status_code == 422
+
+
+async def test_overlong_name_is_422(client):
+    r = await client.post(
+        "/api/auth/signup",
+        json={"email": "name@example.com", "password": "secret123", "name": "x" * 201},
+    )
+    assert r.status_code == 422
