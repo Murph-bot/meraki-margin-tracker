@@ -12,29 +12,50 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 _DUMMY_HASH = hash_password("timing-safe-dummy")
 
 
+BCRYPT_MAX_BYTES = 72
+MAX_NAME_LENGTH = 200
+
+
 def _normalize_email(value: str) -> str:
     return value.strip().lower()
 
 
+def _fits_bcrypt(value: str) -> str:
+    # bcrypt raises on anything longer; reject it as bad input instead of a 500.
+    if len(value.encode("utf-8")) > BCRYPT_MAX_BYTES:
+        raise ValueError(f"must be at most {BCRYPT_MAX_BYTES} bytes")
+    return value
+
+
 class SignupRequest(BaseModel):
-    email: str = Field(min_length=3)
+    email: str = Field(min_length=3, max_length=254)
     password: str = Field(min_length=8)
-    name: str = ""
+    name: str = Field(default="", max_length=MAX_NAME_LENGTH)
 
     @field_validator("email")
     @classmethod
     def email_normalized(cls, value: str) -> str:
         return _normalize_email(value)
 
+    @field_validator("password")
+    @classmethod
+    def password_fits_bcrypt(cls, value: str) -> str:
+        return _fits_bcrypt(value)
+
 
 class LoginRequest(BaseModel):
-    email: str
+    email: str = Field(max_length=254)
     password: str
 
     @field_validator("email")
     @classmethod
     def email_normalized(cls, value: str) -> str:
         return _normalize_email(value)
+
+    @field_validator("password")
+    @classmethod
+    def password_fits_bcrypt(cls, value: str) -> str:
+        return _fits_bcrypt(value)
 
 
 class UserResponse(BaseModel):
@@ -49,7 +70,7 @@ class UserResponse(BaseModel):
 class ProfileUpdate(BaseModel):
     efka_category: int | None = Field(default=None, ge=1, le=6)
     years_active: int | None = Field(default=None, ge=1, le=50)
-    name: str | None = None
+    name: str | None = Field(default=None, max_length=MAX_NAME_LENGTH)
     charges_vat: bool | None = None
 
 
@@ -63,9 +84,9 @@ def _user_from_row(row) -> UserResponse:
         id=row["id"],
         email=row["email"],
         name=row["name"],
-        efka_category=row["efka_category"] if "efka_category" in row.keys() else 1,
-        years_active=row["years_active"] if "years_active" in row.keys() else 1,
-        charges_vat=bool(row["charges_vat"]) if "charges_vat" in row.keys() else False,
+        efka_category=row["efka_category"],
+        years_active=row["years_active"],
+        charges_vat=bool(row["charges_vat"]),
     )
 
 
